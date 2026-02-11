@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>For Elaine</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Lato:wght@300&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- GLOBAL RESET --- */
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; 
+            overscroll-behavior: none; 
+            touch-action: none; 
+        }
+
+        body {
+            background: radial-gradient(circle at center, #2c3e50 0%, #000000 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center; 
+            font-family: 'Playfair Display', serif;
+        }
+
+        /* --- WRAPPER --- */
+        .music-box-container {
+            position: relative;
+            width: 320px;
+            height: auto; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transform-origin: center center;
+            transition: transform 0.3s ease;
+        }
+
+        /* Mobile Scaling */
+        @media (max-height: 700px) {
+            .music-box-container { transform: scale(0.85); }
+        }
+        @media (max-height: 600px) {
+            .music-box-container { transform: scale(0.75); }
+        }
+
+        /* --- STAGE (Visuals) --- */
+        .mechanism-stage {
+            position: relative;
+            width: 300px;
+            height: 400px; /* Taller space to allow full picture pop-up */
+            display: flex;
+            align-items: flex-end; 
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        /* --- PHOTO CONTAINER --- */
+        .image-slot {
+            position: absolute;
+            bottom: 100px; /* Sits deep inside the box */
+            width: 200px;
+            height: 0px; /* Starts closed */
+            overflow: hidden;
+            background: #fff;
+            z-index: 1; 
+            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+            border: 8px solid #fff;
+            opacity: 0; 
+            transition: opacity 0.5s ease;
+            
+            /* Rounded corners for the photo top */
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+        }
+
+        .image-slot img {
+            width: 100%;
+            height: auto;
+            display: block;
+            /* No filter for cleaner look, or keep grayscale if you prefer */
+            /* filter: grayscale(10%) contrast(105%); */
+        }
+
+        /* --- BOX BASE --- */
+        .box-base {
+            width: 260px;
+            height: 160px;
+            background: linear-gradient(145deg, #2b2b2b, #1a1a1a);
+            border-radius: 6px;
+            position: relative;
+            z-index: 10; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.1); 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .gold-trim {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #bf953f, #fcf6ba, #bf953f, transparent);
+            opacity: 0.7;
+        }
+
+        /* --- CRANK --- */
+        .crank-touch-zone {
+            width: 300px; 
+            height: 300px;
+            position: absolute;
+            bottom: -70px; 
+            border-radius: 50%;
+            z-index: 50; 
+            cursor: grab;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .pivot {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #fcf6ba, #bf953f);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            z-index: 15;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .arm-wrapper {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .arm {
+            position: absolute;
+            left: 50%; 
+            width: 70px; 
+            height: 8px;
+            background: #bf953f; 
+            transform-origin: 0% 50%; 
+            border-radius: 4px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+        }
+
+        .knob {
+            position: absolute;
+            right: -12px;
+            top: -11px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #ffebcd, #d4af37);
+            box-shadow: 0 5px 10px rgba(0,0,0,0.4);
+        }
+
+        /* --- TEXT & BUTTONS --- */
+        .text-container {
+            position: relative;
+            text-align: center;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 60; 
+            min-height: 80px; 
+        }
+
+        .main-text {
+            color: #d4af37;
+            font-size: 2rem;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            font-style: italic;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            transition: opacity 0.5s ease; 
+        }
+        
+        .sub-text {
+            color: #7f8c8d;
+            font-family: 'Lato', sans-serif;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-top: 5px;
+            transition: opacity 0.5s ease;
+        }
+
+        .volume-hint {
+            color: #555;
+            font-family: 'Lato', sans-serif;
+            font-size: 0.65rem;
+            margin-top: 5px;
+            font-style: italic;
+            transition: opacity 0.5s ease;
+        }
+
+        .hidden { opacity: 0; pointer-events: none; }
+
+        /* --- YES BUTTON --- */
+        .wa-button {
+            display: none; 
+            position: absolute;
+            top: 0; 
+            background: linear-gradient(135deg, #d4af37 0%, #fcf6ba 50%, #bf953f 100%);
+            border: none;
+            padding: 15px 60px;
+            border-radius: 50px;
+            font-family: 'Playfair Display', serif;
+            font-weight: bold;
+            font-size: 1.5rem;
+            color: #2b2b2b;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(212, 175, 55, 0.4);
+            animation: popIn 0.8s ease forwards;
+            white-space: nowrap;
+        }
+        
+        .wa-button.visible { display: block; }
+
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="music-box-container">
+        
+        <div class="mechanism-stage">
+            <div class="image-slot" id="imageSlot">
+                <img id="myPhoto" src="picture.jpg" alt="Elaine">
+            </div>
+
+            <div class="box-base">
+                <div class="gold-trim"></div>
+                <div class="crank-touch-zone" id="touchZone">
+                    <div class="pivot"></div>
+                    <div class="arm-wrapper" id="armWrapper">
+                        <div class="arm">
+                            <div class="knob"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-container">
+            <div id="titleWrapper">
+                <div class="main-text">For Elaine</div>
+                <div id="instructionGroup">
+                    <div class="sub-text">Rotate to Play</div>
+                    <div class="volume-hint">🔊 Turn On Volume</div>
+                </div>
+            </div>
+
+            <button id="yesButton" class="wa-button">YES</button>
+        </div>
+
+    </div>
+
+    <audio id="musicSource" src="music.mp3" preload="auto"></audio>
+
+    <script>
+        const touchZone = document.getElementById('touchZone');
+        const armWrapper = document.getElementById('armWrapper');
+        const audio = document.getElementById('musicSource');
+        const imageSlot = document.getElementById('imageSlot');
+        const myPhoto = document.getElementById('myPhoto');
+        const instructionGroup = document.getElementById('instructionGroup');
+        const titleWrapper = document.getElementById('titleWrapper');
+        const yesButton = document.getElementById('yesButton');
+        
+        let isDragging = false;
+        let currentRotation = 0;   
+        let rotationOffset = 0; 
+        let lastAngle = 0;
+        let stopTimer = null; 
+        let isFinished = false;
+        
+        // Default Max Height, will be updated by image real height
+        let maxImageHeight = 250; 
+
+        // --- DYNAMIC HEIGHT CALCULATION ---
+        // Wait for image to load, then check how tall it is
+        myPhoto.onload = function() {
+            maxImageHeight = myPhoto.offsetHeight;
+            console.log("Photo height detected: " + maxImageHeight);
+        };
+        // Fallback in case it's already cached
+        if(myPhoto.complete && myPhoto.offsetHeight > 0) {
+            maxImageHeight = myPhoto.offsetHeight;
+        }
+
+        function getCenter(element) {
+            const rect = element.getBoundingClientRect();
+            return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+        }
+
+        function getXY(e) {
+            return e.touches ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : { x: e.clientX, y: e.clientY };
+        }
+
+        function getAngle(x, y, center) {
+            return Math.atan2(y - center.y, x - center.x) * 180 / Math.PI;
+        }
+
+        // --- INTERACTION ---
+
+        function start(e) {
+            if (isFinished) return;
+            
+            // Audio unlock
+            if (audio.paused && audio.currentTime === 0) {
+                audio.play().then(() => {
+                    audio.pause();
+                }).catch(e => console.log("Audio unlock"));
+            }
+
+            isDragging = true;
+            
+            const center = getCenter(touchZone);
+            const pos = getXY(e);
+            const angle = getAngle(pos.x, pos.y, center);
+
+            rotationOffset = angle - currentRotation;
+            lastAngle = angle;
+        }
+
+        function move(e) {
+            if (!isDragging || isFinished) return;
+            if (e.cancelable) e.preventDefault(); 
+
+            const center = getCenter(touchZone);
+            const pos = getXY(e);
+            const angle = getAngle(pos.x, pos.y, center);
+
+            let delta = angle - lastAngle;
+            if (delta < -180) delta += 360;
+            if (delta > 180) delta -= 360;
+
+            currentRotation += delta;
+            armWrapper.style.transform = `rotate(${currentRotation}deg)`;
+
+            if (Math.abs(delta) > 0.5) {
+                playMusic();
+                // Hide instructions early
+                if (currentRotation > 40) {
+                    instructionGroup.classList.add('hidden');
+                }
+            }
+
+            lastAngle = angle;
+        }
+
+        function end() {
+            isDragging = false;
+            if (!isFinished) audio.pause();
+        }
+
+        function playMusic() {
+            if (audio.paused) audio.play();
+
+            if (stopTimer) clearTimeout(stopTimer);
+            stopTimer = setTimeout(() => {
+                if (!isFinished) audio.pause();
+            }, 100); 
+
+            updateGame();
+        }
+
+        function updateGame() {
+            if (!audio.duration) return;
+
+            const percentage = audio.currentTime / audio.duration;
+            const safePercentage = Math.min(Math.max(percentage, 0), 1);
+
+            // Dynamically set height
+            imageSlot.style.height = (safePercentage * maxImageHeight) + 'px';
+            imageSlot.style.opacity = Math.min(safePercentage * 3, 1);
+
+            // END CONDITION
+            if (audio.currentTime >= audio.duration - 0.2) {
+                finish();
+            }
+        }
+
+        function finish() {
+            isFinished = true;
+            isDragging = false;
+            audio.pause();
+            audio.currentTime = audio.duration; 
+            
+            // FORCE FULL HEIGHT
+            // We use the detected height to ensure nothing is cropped
+            imageSlot.style.height = maxImageHeight + 'px';
+            imageSlot.style.opacity = 1;
+            
+            touchZone.style.pointerEvents = 'none';
+            
+            // HIDE TEXT
+            titleWrapper.classList.add('hidden');
+
+            // SHOW BUTTON
+            yesButton.classList.add('visible');
+        }
+
+        yesButton.addEventListener('click', (e) => {
+            const phoneNumber = "6282269355735";
+            const message = "YES, OF COURSE I WANT TO BE UR VALENTINE";
+            window.location.href = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+        });
+
+        touchZone.addEventListener('mousedown', start);
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', end);
+
+        touchZone.addEventListener('touchstart', start, { passive: false });
+        window.addEventListener('touchmove', move, { passive: false });
+        window.addEventListener('touchend', end);
+
+    </script>
+</body>
+</html>

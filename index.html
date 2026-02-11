@@ -15,10 +15,13 @@
             padding: 0;
             overflow: hidden; 
             overscroll-behavior: none; 
-            touch-action: none; 
+            touch-action: none; /* Disables standard touch gestures */
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         body {
+            /* Dark Elegant Background */
             background: radial-gradient(circle at center, #2c3e50 0%, #000000 100%);
             display: flex;
             justify-content: center;
@@ -51,7 +54,7 @@
         .mechanism-stage {
             position: relative;
             width: 300px;
-            height: 400px; /* Taller space to allow full picture pop-up */
+            height: 450px; /* Taller to fit full picture */
             display: flex;
             align-items: flex-end; 
             justify-content: center;
@@ -71,8 +74,6 @@
             border: 8px solid #fff;
             opacity: 0; 
             transition: opacity 0.5s ease;
-            
-            /* Rounded corners for the photo top */
             border-top-left-radius: 4px;
             border-top-right-radius: 4px;
         }
@@ -81,8 +82,6 @@
             width: 100%;
             height: auto;
             display: block;
-            /* No filter for cleaner look, or keep grayscale if you prefer */
-            /* filter: grayscale(10%) contrast(105%); */
         }
 
         /* --- BOX BASE --- */
@@ -176,6 +175,8 @@
             align-items: center;
             z-index: 60; 
             min-height: 80px; 
+            /* IMPORTANT: Allows clicks to pass through text to the crank below */
+            pointer-events: none; 
         }
 
         .main-text {
@@ -226,6 +227,8 @@
             box-shadow: 0 5px 20px rgba(212, 175, 55, 0.4);
             animation: popIn 0.8s ease forwards;
             white-space: nowrap;
+            /* IMPORTANT: Re-enable clicks for the button */
+            pointer-events: auto; 
         }
         
         .wa-button.visible { display: block; }
@@ -291,39 +294,32 @@
         let stopTimer = null; 
         let isFinished = false;
         
-        // Default Max Height, will be updated by image real height
+        // We will calculate this on the first touch
         let maxImageHeight = 250; 
-
-        // --- DYNAMIC HEIGHT CALCULATION ---
-        // Wait for image to load, then check how tall it is
-        myPhoto.onload = function() {
-            maxImageHeight = myPhoto.offsetHeight;
-            console.log("Photo height detected: " + maxImageHeight);
-        };
-        // Fallback in case it's already cached
-        if(myPhoto.complete && myPhoto.offsetHeight > 0) {
-            maxImageHeight = myPhoto.offsetHeight;
-        }
 
         function getCenter(element) {
             const rect = element.getBoundingClientRect();
             return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
         }
 
-        function getXY(e) {
-            return e.touches ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : { x: e.clientX, y: e.clientY };
-        }
-
         function getAngle(x, y, center) {
             return Math.atan2(y - center.y, x - center.x) * 180 / Math.PI;
         }
 
-        // --- INTERACTION ---
+        // --- POINTER EVENTS (Unifies Mouse & Touch) ---
 
-        function start(e) {
+        function onPointerDown(e) {
             if (isFinished) return;
             
-            // Audio unlock
+            // 1. Calculate Real Image Height on first interaction
+            // This ensures we know exactly how tall the image is
+            if(myPhoto.naturalHeight > 0) {
+                 // Calculate displayed height based on width of 200px
+                 const ratio = myPhoto.naturalHeight / myPhoto.naturalWidth;
+                 maxImageHeight = 200 * ratio;
+            }
+
+            // 2. Audio Unlock (Critical for Mobile)
             if (audio.paused && audio.currentTime === 0) {
                 audio.play().then(() => {
                     audio.pause();
@@ -332,32 +328,41 @@
 
             isDragging = true;
             
+            // 3. Pointer Capture (Critical for Dragging)
+            // This prevents the browser from losing the drag if you slide off the element
+            touchZone.setPointerCapture(e.pointerId);
+
             const center = getCenter(touchZone);
-            const pos = getXY(e);
-            const angle = getAngle(pos.x, pos.y, center);
+            const angle = getAngle(e.clientX, e.clientY, center);
 
             rotationOffset = angle - currentRotation;
             lastAngle = angle;
         }
 
-        function move(e) {
+        function onPointerMove(e) {
             if (!isDragging || isFinished) return;
-            if (e.cancelable) e.preventDefault(); 
+            
+            // Stop Scroll
+            e.preventDefault(); 
 
             const center = getCenter(touchZone);
-            const pos = getXY(e);
-            const angle = getAngle(pos.x, pos.y, center);
+            const angle = getAngle(e.clientX, e.clientY, center);
 
             let delta = angle - lastAngle;
             if (delta < -180) delta += 360;
             if (delta > 180) delta -= 360;
 
+            // Absolute tracking
+            let newRotation = angle - rotationOffset;
+            
+            // We use delta to drive the "engine" but absolute to drive visuals
+            // Actually, for infinite spinning, accumulating delta is safer
             currentRotation += delta;
             armWrapper.style.transform = `rotate(${currentRotation}deg)`;
 
             if (Math.abs(delta) > 0.5) {
                 playMusic();
-                // Hide instructions early
+                // Hide instructions
                 if (currentRotation > 40) {
                     instructionGroup.classList.add('hidden');
                 }
@@ -366,8 +371,9 @@
             lastAngle = angle;
         }
 
-        function end() {
+        function onPointerUp(e) {
             isDragging = false;
+            touchZone.releasePointerCapture(e.pointerId);
             if (!isFinished) audio.pause();
         }
 
@@ -388,11 +394,9 @@
             const percentage = audio.currentTime / audio.duration;
             const safePercentage = Math.min(Math.max(percentage, 0), 1);
 
-            // Dynamically set height
             imageSlot.style.height = (safePercentage * maxImageHeight) + 'px';
             imageSlot.style.opacity = Math.min(safePercentage * 3, 1);
 
-            // END CONDITION
             if (audio.currentTime >= audio.duration - 0.2) {
                 finish();
             }
@@ -404,11 +408,11 @@
             audio.pause();
             audio.currentTime = audio.duration; 
             
-            // FORCE FULL HEIGHT
-            // We use the detected height to ensure nothing is cropped
+            // Full Height
             imageSlot.style.height = maxImageHeight + 'px';
             imageSlot.style.opacity = 1;
             
+            // Stop interaction
             touchZone.style.pointerEvents = 'none';
             
             // HIDE TEXT
@@ -424,13 +428,11 @@
             window.location.href = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
         });
 
-        touchZone.addEventListener('mousedown', start);
-        window.addEventListener('mousemove', move);
-        window.addEventListener('mouseup', end);
-
-        touchZone.addEventListener('touchstart', start, { passive: false });
-        window.addEventListener('touchmove', move, { passive: false });
-        window.addEventListener('touchend', end);
+        // Use Pointer Events for best mobile support
+        touchZone.addEventListener('pointerdown', onPointerDown);
+        touchZone.addEventListener('pointermove', onPointerMove);
+        touchZone.addEventListener('pointerup', onPointerUp);
+        touchZone.addEventListener('pointercancel', onPointerUp);
 
     </script>
 </body>
